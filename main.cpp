@@ -172,6 +172,10 @@ vector<pair<int, string>> GetExpdInfo(const string& name, const string& ID) {
 	}
 	f.close();
 	system("del *.html");
+	sort(res.begin(), res.end());
+	res.erase(unique(res.begin(), res.end()), res.end());
+	for (auto i : res)
+		i.first *= -1;
 	return res;
 }
 
