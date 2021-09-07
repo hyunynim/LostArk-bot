@@ -11,6 +11,28 @@ using namespace utility;
 
 typedef long long ll;
 
+string UTF8ToANSI(const char* pszCode){
+	//https://snowbora.tistory.com/370
+	BSTR    bstrWide;
+	char* pszAnsi;
+	int     nLength;
+
+	nLength = MultiByteToWideChar(CP_UTF8, 0, pszCode, lstrlen(pszCode) + 1, NULL, NULL);
+	bstrWide = SysAllocStringLen(NULL, nLength);
+
+	MultiByteToWideChar(CP_UTF8, 0, pszCode, lstrlen(pszCode) + 1, bstrWide, nLength);
+
+	nLength = WideCharToMultiByte(CP_ACP, 0, bstrWide, -1, NULL, 0, NULL, NULL);
+	pszAnsi = new char[nLength];
+
+	WideCharToMultiByte(CP_ACP, 0, bstrWide, -1, pszAnsi, nLength, NULL, NULL);
+	SysFreeString(bstrWide);
+
+	string res = pszAnsi;
+	delete pszAnsi;
+	return res;
+}
+
 wstring str2wstr(const string& _src){
 	USES_CONVERSION;
 	return wstring(A2W(_src.c_str()));
@@ -19,15 +41,20 @@ string wstr2str(const wstring& _src){
 	USES_CONVERSION;
 	return string(W2A(_src.c_str()));
 }
-ll GetLevelInfo(const string &name) {
-	wstring wName = str2wstr(name);
+
+ll GetLevelInfo(const string &name, const string &ID) {
 	using namespace web;
 	using namespace web::http;
 	using namespace web::http::client;
 	using namespace concurrency::streams;
+	string tmp = UTF8ToANSI(name.c_str());
+	string IDs = UTF8ToANSI(ID.c_str());
+	string_t fName = str2wstr(IDs) + U("glvl.html");
+	string_t wName = str2wstr(tmp);
+	wcout << wName << endl;
 	auto fileStream = std::make_shared<concurrency::streams::ostream>();
 	
-	pplx::task<void> requestTask = concurrency::streams::fstream::open_ostream(U("result.html")).then([=](concurrency::streams::ostream outFile)
+	pplx::task<void> requestTask = concurrency::streams::fstream::open_ostream(fName).then([=](concurrency::streams::ostream outFile)
 		{
 			*fileStream = outFile;
 
@@ -54,7 +81,7 @@ ll GetLevelInfo(const string &name) {
 				printf("Error exception:%s\n", e.what());
 			}
 	locale::global(locale(".UTF-8"));
-	wifstream f(L"result.html");
+	wifstream f(fName);
 	wstring wstr = L"";
 	while(!f.eof()){
 		getline(f, wstr);
@@ -67,10 +94,15 @@ ll GetLevelInfo(const string &name) {
 				if (i != ',')
 					res = res * 10 + (i - '0');
 			cout << res << '\n';
+			v1::remove(fName);
 			return res;
 		}
 	}
+	v1::remove(fName);
 	return 0;
+}
+void GetExpdInfo(const string& name, const string& ID) {
+
 }
 
 random_device rd;
@@ -117,7 +149,7 @@ public:
 			else if (res[0] == u8"강화") {
 				auto num = str2ll(res[1]);
 				if (num == -1)
-					sendMessage(msg.channelID, u8"#강화 확률(1% = 10, 0.1% = 1)");
+					sendMessage(msg.channelID, u8"!강화 확률(1% = 10, 0.1% = 1)");
 				else {
 					string per = num2per(num);
 					sendMessage(msg.channelID, u8"강화 확률 = " + per);
@@ -159,26 +191,33 @@ public:
 			}
 			else if (res[0] == u8"캐릭터추가") {
 				if (res.size() != 2) {
-					sendMessage(msg.channelID, u8"#캐릭터추가 [추가할 캐릭터 이름]");
+					sendMessage(msg.channelID, u8"!캐릭터추가 [추가할 캐릭터 이름]");
 				}
 				else {
 					string rt = expdRoot + msg.author.ID.string();
 					FILE* fp = fopen((rt + "/cList.txt").c_str(), "r");
 					if (fp == NULL) {
-						sendMessage(msg.channelID, u8"등록되지 않은 원정대(#원정대등록)");
+						sendMessage(msg.channelID, u8"등록되지 않은 원정대(#!원정대등록)");
 					}
 					else {
 						fp = fopen((rt + "/" + res[1] + ".txt").c_str(), "r");
-						if (fp) sendMessage(msg.channelID, u8"이미 등록된 캐릭터");
+						if (fp) {
+							sendMessage(msg.channelID, u8"이미 등록된 캐릭터");
+							fclose(fp);
+						}
 						else {
 							fp = fopen((rt + "/" + res[1] + ".txt").c_str(), "w");
+							auto lvl = GetLevelInfo(res[1], msg.author.ID.string());
+							fprintf(fp, "%lld\n", lvl);
 							fclose(fp);
+
 							fp = fopen((rt + "/cList.txt").c_str(), "a");
 							fprintf(fp, "%s\n", res[1].c_str());
 							fclose(fp);
-							sendMessage(msg.channelID, res[1] + u8" 캐릭터 등록 완료");
+							sendMessage(msg.channelID, res[1] + u8"(" + ll2str(lvl) + u8") 캐릭터 등록 완료");
 						}
 					}
+					if (fp != NULL) fclose(fp);
 				}
 			}
 			else if (res[0] == u8"test") {
@@ -235,17 +274,15 @@ public:
 	}
 };
 
-int main() {
-	GetLevelInfo("안홍자");
-	GetLevelInfo("안홍자z");
-	GetLevelInfo("트위치안홍자");
-	GetLevelInfo("twitch안홍자");
-	GetLevelInfo("홍자짱짱123");
+void Test() {
 	system("pause");
-	return 0;
+}
+int main() {
+	//Test(); return 0;
 	setlocale(LC_ALL, "ko_KR.utf8");
 	srand(time(0)); 
 
-	MyClientClass client("TOKEN", 2);
+	MyClientClass client("Njc0MTU3MzI5NzU5MDc2MzUy.Xjkf8A.3oINoKTMz0Bqz_daQ3izNHVgWRA", 2);
+	client.updateStatus(u8"하아아아앙");
 	client.run();
 }
