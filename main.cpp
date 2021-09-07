@@ -1,62 +1,20 @@
-#include "sleepy_discord/websocketpp_websocket.h"
+#include"sleepy_discord/websocketpp_websocket.h"
 #include<bits/stdc++.h>
 #include<atlconv.h>
-#include <experimental/filesystem>
-#include <cpprest/http_client.h>
-#include <cpprest/filestream.h>
+#include<experimental/filesystem>
+#include<cpprest/http_client.h>
+#include<cpprest/filestream.h>
 
 using namespace std; 
 using namespace std::experimental::filesystem;
 using namespace utility;
 
 typedef long long ll;
-string ANSIToUTF8(const char* pszCode) {
-	//https://snowbora.tistory.com/370
-	int     nLength, nLength2;
-	BSTR    bstrCode;
-	char* pszUTFCode = NULL;
 
-	nLength = MultiByteToWideChar(CP_ACP, 0, pszCode, lstrlen(pszCode), NULL, NULL);
-	bstrCode = SysAllocStringLen(NULL, nLength);
-	MultiByteToWideChar(CP_ACP, 0, pszCode, lstrlen(pszCode), bstrCode, nLength);
-
-	nLength2 = WideCharToMultiByte(CP_UTF8, 0, bstrCode, -1, pszUTFCode, 0, NULL, NULL);
-	pszUTFCode = (char*)malloc(nLength2 + 1);
-	WideCharToMultiByte(CP_UTF8, 0, bstrCode, -1, pszUTFCode, nLength2, NULL, NULL);
-	string res = pszUTFCode;
-	delete pszUTFCode;
-	return res;
-}
-string UTF8ToANSI(const char* pszCode){
-	//https://snowbora.tistory.com/370
-	BSTR    bstrWide;
-	char* pszAnsi;
-	int     nLength;
-
-	nLength = MultiByteToWideChar(CP_UTF8, 0, pszCode, lstrlen(pszCode) + 1, NULL, NULL);
-	bstrWide = SysAllocStringLen(NULL, nLength);
-
-	MultiByteToWideChar(CP_UTF8, 0, pszCode, lstrlen(pszCode) + 1, bstrWide, nLength);
-
-	nLength = WideCharToMultiByte(CP_ACP, 0, bstrWide, -1, NULL, 0, NULL, NULL);
-	pszAnsi = new char[nLength];
-
-	WideCharToMultiByte(CP_ACP, 0, bstrWide, -1, pszAnsi, nLength, NULL, NULL);
-	SysFreeString(bstrWide);
-
-	string res = pszAnsi;
-	delete pszAnsi;
-	return res;
-}
-
-wstring str2wstr(const string& _src){
-	USES_CONVERSION;
-	return wstring(A2W(_src.c_str()));
-}
-string wstr2str(const wstring& _src){
-	USES_CONVERSION;
-	return string(W2A(_src.c_str()));
-}
+string ANSIToUTF8(const char* pszCode);
+string UTF8ToANSI(const char* pszCode);
+wstring str2wstr(const string& _src);
+string wstr2str(const wstring& _src);
 
 ll GetLevelInfo(const string &name, const string &ID) {
 	using namespace web;
@@ -242,10 +200,6 @@ public:
 					sendMessage(msg.channelID, u8"주사위 결과는 " + res + u8"(1-100)");
 				}
 			}
-			else if (res[0] == u8"입장") {
-				printf("%s\n", msg.member.nick.c_str());
-				//client.connectToVoiceChannel(, "584340930237169684");
-			}
 			else if (res[0] == u8"원정대등록") {
 				if (res.size() != 2) {
 					sendMessage(msg.channelID, u8"!원정대등록 [원정대에 포함된 캐릭터 중 하나의 캐릭터 이름]");
@@ -388,4 +342,53 @@ int main() {
 	MyClientClass client(token, 2);
 	client.updateStatus(u8"하아아아앙");
 	client.run();
+}
+
+
+string ANSIToUTF8(const char* pszCode) {
+	//https://snowbora.tistory.com/370
+	int     nLength, nLength2;
+	BSTR    bstrCode;
+	char* pszUTFCode = NULL;
+
+	nLength = MultiByteToWideChar(CP_ACP, 0, pszCode, lstrlen(pszCode), NULL, NULL);
+	bstrCode = SysAllocStringLen(NULL, nLength);
+	MultiByteToWideChar(CP_ACP, 0, pszCode, lstrlen(pszCode), bstrCode, nLength);
+
+	nLength2 = WideCharToMultiByte(CP_UTF8, 0, bstrCode, -1, pszUTFCode, 0, NULL, NULL);
+	pszUTFCode = (char*)malloc(nLength2 + 1);
+	WideCharToMultiByte(CP_UTF8, 0, bstrCode, -1, pszUTFCode, nLength2, NULL, NULL);
+	string res = pszUTFCode;
+	delete pszUTFCode;
+	return res;
+}
+string UTF8ToANSI(const char* pszCode) {
+	//https://snowbora.tistory.com/370
+	BSTR    bstrWide;
+	char* pszAnsi;
+	int     nLength;
+
+	nLength = MultiByteToWideChar(CP_UTF8, 0, pszCode, lstrlen(pszCode) + 1, NULL, NULL);
+	bstrWide = SysAllocStringLen(NULL, nLength);
+
+	MultiByteToWideChar(CP_UTF8, 0, pszCode, lstrlen(pszCode) + 1, bstrWide, nLength);
+
+	nLength = WideCharToMultiByte(CP_ACP, 0, bstrWide, -1, NULL, 0, NULL, NULL);
+	pszAnsi = new char[nLength];
+
+	WideCharToMultiByte(CP_ACP, 0, bstrWide, -1, pszAnsi, nLength, NULL, NULL);
+	SysFreeString(bstrWide);
+
+	string res = pszAnsi;
+	delete pszAnsi;
+	return res;
+}
+
+wstring str2wstr(const string& _src) {
+	USES_CONVERSION;
+	return wstring(A2W(_src.c_str()));
+}
+string wstr2str(const wstring& _src) {
+	USES_CONVERSION;
+	return string(W2A(_src.c_str()));
 }
