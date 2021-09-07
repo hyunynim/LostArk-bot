@@ -10,7 +10,23 @@ using namespace std::experimental::filesystem;
 using namespace utility;
 
 typedef long long ll;
+string ANSIToUTF8(const char* pszCode) {
+	//https://snowbora.tistory.com/370
+	int     nLength, nLength2;
+	BSTR    bstrCode;
+	char* pszUTFCode = NULL;
 
+	nLength = MultiByteToWideChar(CP_ACP, 0, pszCode, lstrlen(pszCode), NULL, NULL);
+	bstrCode = SysAllocStringLen(NULL, nLength);
+	MultiByteToWideChar(CP_ACP, 0, pszCode, lstrlen(pszCode), bstrCode, nLength);
+
+	nLength2 = WideCharToMultiByte(CP_UTF8, 0, bstrCode, -1, pszUTFCode, 0, NULL, NULL);
+	pszUTFCode = (char*)malloc(nLength2 + 1);
+	WideCharToMultiByte(CP_UTF8, 0, bstrCode, -1, pszUTFCode, nLength2, NULL, NULL);
+	string res = pszUTFCode;
+	delete pszUTFCode;
+	return res;
+}
 string UTF8ToANSI(const char* pszCode){
 	//https://snowbora.tistory.com/370
 	BSTR    bstrWide;
@@ -47,11 +63,8 @@ ll GetLevelInfo(const string &name, const string &ID) {
 	using namespace web::http;
 	using namespace web::http::client;
 	using namespace concurrency::streams;
-	string tmp = UTF8ToANSI(name.c_str());
-	string IDs = UTF8ToANSI(ID.c_str());
-	string_t fName = str2wstr(IDs) + U("glvl.html");
-	string_t wName = str2wstr(tmp);
-	wcout << wName << endl;
+	string_t fName = str2wstr(UTF8ToANSI(ID.c_str())) + U("glvl.html");
+	string_t wName = str2wstr(UTF8ToANSI(name.c_str()));
 	auto fileStream = std::make_shared<concurrency::streams::ostream>();
 	
 	pplx::task<void> requestTask = concurrency::streams::fstream::open_ostream(fName).then([=](concurrency::streams::ostream outFile)
@@ -82,6 +95,7 @@ ll GetLevelInfo(const string &name, const string &ID) {
 			}
 	locale::global(locale(".UTF-8"));
 	wifstream f(fName);
+	
 	wstring wstr = L"";
 	while(!f.eof()){
 		getline(f, wstr);
@@ -93,16 +107,72 @@ ll GetLevelInfo(const string &name, const string &ID) {
 			for (auto i : tmp)
 				if (i != ',')
 					res = res * 10 + (i - '0');
-			cout << res << '\n';
-			v1::remove(fName);
+			f.close();
+			system("del *.html");
 			return res;
 		}
 	}
-	v1::remove(fName);
+	f.close();
+	system("del *.html");
 	return 0;
 }
-void GetExpdInfo(const string& name, const string& ID) {
+vector<pair<int, string>> GetExpdInfo(const string& name, const string& ID) {
+	using namespace web;
+	using namespace web::http;
+	using namespace web::http::client;
+	using namespace concurrency::streams;
+	string_t fName = str2wstr(UTF8ToANSI(ID.c_str())) + U("gexpd.html");
+	string_t wName = str2wstr(UTF8ToANSI(name.c_str()));
+	auto fileStream = std::make_shared<concurrency::streams::ostream>();
 
+	pplx::task<void> requestTask = concurrency::streams::fstream::open_ostream(fName).then([=](concurrency::streams::ostream outFile)
+		{
+			*fileStream = outFile;
+
+			http_client_config conf;
+			conf.set_timeout(seconds(4));
+
+			http_client client(U("http://lostark.game.onstove.com/Profile/Character/"));
+			uri_builder builder(uri::encode_uri(wName));
+			return client.request(methods::GET, builder.to_string());
+		}).then([=](http_response response)
+			{
+				return response.body().read_to_end(fileStream->streambuf());
+			}).then([=](size_t nVal)
+				{
+					return fileStream->close();
+				});
+
+			try
+			{
+				requestTask.wait();
+			}
+			catch (const std::exception& e)
+			{
+				printf("Error exception:%s\n", e.what());
+			}
+	locale::global(locale(".UTF-8"));
+	wifstream f(fName);
+	wstring wstr = L"";
+	vector<pair<int, string>> res;
+	while (!f.eof()) {
+		getline(f, wstr);
+		const wstring fStr = L"/Profile/Character/";
+		auto idx = wstr.find(fStr);
+		if (idx != wstring::npos) {
+			idx += fStr.length();
+			auto p1 = wstr.substr(idx);
+			if (p1.find(L"'\">") == wstring::npos) continue;
+			p1.pop_back(); p1.pop_back(); p1.pop_back();
+			string uStr = ANSIToUTF8(wstr2str(p1).c_str());
+			auto level = GetLevelInfo(uStr, "tmp");
+			if(level >= 1325)
+				res.push_back({ -level, uStr });
+		}
+	}
+	f.close();
+	system("del *.html");
+	return res;
 }
 
 random_device rd;
@@ -180,13 +250,16 @@ public:
 					v1::create_directory(p);
 
 					fp = fopen((rt + "/cList.txt").c_str(), "w");
-					fclose(fp);
+					
+					string rep = u8"등록되지 않은 원정대입니다. 원정대 등록 작업을 시작합니다.";
+					sendMessage(msg.channelID, rep);
+					
 
-					sendMessage(msg.channelID, u8"등록되지 않은 원정대 생성 완료");
+					fclose(fp);
 				}
 				else {
 					fclose(fp);
-					sendMessage(msg.channelID, u8"이미 등록된 원정대");
+					sendMessage(msg.channelID, u8"이미 등록된 원정대입니다.");
 				}
 			}
 			else if (res[0] == u8"캐릭터추가") {
@@ -275,10 +348,17 @@ public:
 };
 
 void Test() {
+	auto res = GetExpdInfo(u8"안홍자", u8"541542135431522");
+	sort(res.begin(), res.end());
+	res.erase(unique(res.begin(), res.end()), res.end());
+	for (auto i : res) {
+		i.first *= -1;
+		cout << i.first << i.second << endl;
+	}
 	system("pause");
 }
 int main() {
-	//Test(); return 0;
+	Test(); return 0;
 	setlocale(LC_ALL, "ko_KR.utf8");
 	srand(time(0)); 
 
