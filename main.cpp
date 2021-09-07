@@ -174,7 +174,7 @@ vector<pair<int, string>> GetExpdInfo(const string& name, const string& ID) {
 	system("del *.html");
 	sort(res.begin(), res.end());
 	res.erase(unique(res.begin(), res.end()), res.end());
-	for (auto i : res)
+	for (auto &i : res)
 		i.first *= -1;
 	return res;
 }
@@ -247,23 +247,38 @@ public:
 				//client.connectToVoiceChannel(, "584340930237169684");
 			}
 			else if (res[0] == u8"원정대등록") {
-				string rt = expdRoot + msg.author.ID.string();
-				FILE* fp = fopen((rt + "/cList.txt").c_str(), "r");
-				if (fp == NULL) {
-					v1::path p(rt.c_str());
-					v1::create_directory(p);
-
-					fp = fopen((rt + "/cList.txt").c_str(), "w");
-					
-					string rep = u8"등록되지 않은 원정대입니다. 원정대 등록 작업을 시작합니다.";
-					sendMessage(msg.channelID, rep);
-					
-
-					fclose(fp);
+				if (res.size() != 2) {
+					sendMessage(msg.channelID, u8"!원정대등록 [원정대에 포함된 캐릭터 중 하나의 캐릭터 이름]");
 				}
 				else {
-					fclose(fp);
-					sendMessage(msg.channelID, u8"이미 등록된 원정대입니다.");
+					string rt = expdRoot + msg.author.ID.string();
+					FILE* fp = fopen((rt + "/cList.txt").c_str(), "r");
+					if (fp == NULL) {
+						v1::path p(rt.c_str());
+						v1::create_directory(p);
+
+						fp = fopen((rt + "/cList.txt").c_str(), "w");
+
+						string rep = u8"```등록되지 않은 원정대입니다. 원정대 등록을 시작합니다.\n원정대에 포함되어 있는 캐릭터 중, 1325 이상의 캐릭터만 등록됩니다.\n원정대 정보는 디스코드 계정의 고유 ID를 통해 저장됩니다.```";
+						sendMessage(msg.channelID, rep);
+						
+						auto expd = GetExpdInfo(res[1], msg.author.ID.string());
+						rep = u8"```\n";
+						for (auto i : expd) {
+							rep += i.second + u8"(Lv." + ANSIToUTF8(ll2str(i.first).c_str()) + u8")\n";
+							fprintf(fp, "%s\n", i.second.c_str());
+							FILE * cfp = fopen((rt + "/" + i.second + ".txt").c_str(), "w");
+							fprintf(cfp, "%lld\n", i.first);
+							fclose(cfp);
+						}
+						rep += u8"총 " + ll2str(expd.size()) + u8"개의 캐릭터를 등록하였습니다.```";
+						sendMessage(msg.channelID, rep);
+						fclose(fp);
+					}
+					else {
+						fclose(fp);
+						sendMessage(msg.channelID, u8"이미 등록된 원정대입니다.");
+					}
 				}
 			}
 			else if (res[0] == u8"캐릭터추가") {
@@ -274,7 +289,7 @@ public:
 					string rt = expdRoot + msg.author.ID.string();
 					FILE* fp = fopen((rt + "/cList.txt").c_str(), "r");
 					if (fp == NULL) {
-						sendMessage(msg.channelID, u8"등록되지 않은 원정대(#!원정대등록)");
+						sendMessage(msg.channelID, u8"등록되지 않은 원정대(!원정대등록)");
 					}
 					else {
 						fp = fopen((rt + "/" + res[1] + ".txt").c_str(), "r");
@@ -362,7 +377,7 @@ void Test() {
 	system("pause");
 }
 int main() {
-	Test(); return 0;
+	//Test(); return 0;
 	setlocale(LC_ALL, "ko_KR.utf8");
 	srand(time(0)); 
 
