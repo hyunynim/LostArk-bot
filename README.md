@@ -1,5 +1,6 @@
 # Discord bot for 유머
 # Todo
+- Scheduling for commands
 - Refactoring
   - Function that get information from web
   - Commands(onMessage)
