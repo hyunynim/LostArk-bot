@@ -1,4 +1,10 @@
 # Discord bot for 유머
+# Todo
+- Refactoring
+  - Function that get information from web
+  - Commands(onMessage)
+  - Util function(for string)
+- Expedition scheduler
 
 # 2021-09-08
 - Command List(starts with '!')
