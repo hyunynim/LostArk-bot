@@ -282,7 +282,11 @@ int main() {
 	setlocale(LC_ALL, "ko_KR.utf8");
 	srand(time(0)); 
 
-	MyClientClass client("TOKEN", 2);
+	FILE* fp = fopen("token.txt", "r");
+	char token[123]; fscanf(fp, "%s", token);
+	fclose(fp);
+
+	MyClientClass client(token, 2);
 	client.updateStatus(u8"하아아아앙");
 	client.run();
 }
