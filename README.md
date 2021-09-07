@@ -1,4 +1,4 @@
-# Discord bot for 유머
+# Discord bot for LostArk
 # Todo
 - Scheduling for commands
 - Refactoring
