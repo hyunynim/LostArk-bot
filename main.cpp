@@ -282,7 +282,7 @@ int main() {
 	setlocale(LC_ALL, "ko_KR.utf8");
 	srand(time(0)); 
 
-	MyClientClass client("Njc0MTU3MzI5NzU5MDc2MzUy.Xjkf8A.3oINoKTMz0Bqz_daQ3izNHVgWRA", 2);
+	MyClientClass client("TOKEN", 2);
 	client.updateStatus(u8"하아아아앙");
 	client.run();
 }
