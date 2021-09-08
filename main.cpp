@@ -51,13 +51,15 @@ class EXPEDITION {
 		CHARACTER() : name(""), level(0) {}
 		CHARACTER(const string& name, const int lvl) : name(name), level(lvl) {
 			for (auto it = dailyList.rbegin(); it != dailyList.rend(); ++it) {
-				if ((*it).lb == -1 || (*it).lb <= lvl && (daily.empty() || daily.back().first.group != (*it).group))
+				if (((*it).lb == -1 || (*it).lb <= lvl) && (daily.empty() || daily.back().first.group != (*it).group))
 					daily.push_back({ *it, 0 });
 			}
 			for (auto it = weeklyList.rbegin(); it != weeklyList.rend(); ++it) {
-				if ((*it).lb == -1 || (*it).lb <= lvl && (weekly.empty() || weekly.back().first.group != (*it).group))
-					daily.push_back({ *it, 0 });
+				if (((*it).lb == -1 || (*it).lb <= lvl) && (weekly.empty() || weekly.back().first.group != (*it).group))
+					weekly.push_back({ *it, 0 });
 			}
+			reverse(daily.begin(), daily.end());
+			reverse(weekly.begin(), weekly.end());
 		}
 		string GetName() { return name; }
 		int GetLevel() { return level; }
@@ -82,6 +84,7 @@ public:
 					res += (w.second ? u8"O" : u8"X");
 					res += u8") " + w.first.name + u8"\n";
 				}
+				break;
 			}
 		}
 		return res;
@@ -96,12 +99,14 @@ public:
 					res += u8") " + w.first.name + u8"\n";
 				}
 			}
+			break;
 		}
 		return res;
 	}
 };
 
-vector<EXPEDITION> expdList;
+vector<EXPEDITION> expdList(1);
+map<string, int> expdComp;
 void InitExpdList() {
 
 }
@@ -133,8 +138,7 @@ public:
 			auto content = msg.content.substr(1);
 
 			auto res = split(content, u8' ');
-			if (res[0] == u8"하위")
-				sendMessage(msg.channelID, u8"헬로 " + msg.author.username + u8" 마더뻐-커 ");
+			if (res[0] == u8"하위") sendMessage(msg.channelID, u8"헬로 " + msg.author.username + u8" 마더뻐-커 ");
 			else if (res[0] == u8"강화") {
 				auto num = str2ll(res[1]);
 				if (num == -1)
@@ -184,6 +188,7 @@ public:
 							fprintf(cfp, "%lld\n", i.first);
 							fclose(cfp);
 						}
+						expdComp[msg.author.ID.string()] = expdList.size();
 						expdList.push_back(expdTmp);
 						rep += u8"총 " + ll2str(expd.size()) + u8"개의 캐릭터를 등록하였습니다.```";
 						sendMessage(msg.channelID, rep);
@@ -242,6 +247,31 @@ public:
 				for (auto it : dailyList)
 					rep += it.name + u8"\n";
 
+				rep += u8"```";
+				sendMessage(msg.channelID, rep);
+			}
+			else if(res[0] == u8"원정대"){
+				if (res.size() != 3) {
+					sendMessage(msg.channelID, u8"!원정대 [캐릭터 명] [일일, 주간]");
+					return;
+				}
+				if (expdComp[msg.author.ID.string()] == 0) {
+					sendMessage(msg.channelID, u8"등록되지 않은 원정대입니다.(!원정대등록)");
+					return;
+				}
+				string rep = u8"```\n";
+				if (res[2] == u8"일일") {
+					rep += res[1] + u8"캐릭터의 일일 컨텐츠 현황입니다.\n";
+					rep += expdList[expdComp[msg.author.ID.string()]].GetCharacterDailyInfo(res[1]);
+				}
+				else if (res[2] == u8"주간") {
+					rep += res[1] + u8"캐릭터의 주간 컨텐츠 현황입니다.\n";
+					rep += expdList[expdComp[msg.author.ID.string()]].GetCharacterWeeklyInfo(res[1]);
+				}
+				else {
+					sendMessage(msg.channelID, u8"!원정대 [캐릭터 명] [일일, 주간]");
+					return;
+				}
 				rep += u8"```";
 				sendMessage(msg.channelID, rep);
 			}
@@ -602,7 +632,7 @@ void InitTodoList() {
 		if (cur.back() == '\n') cur.pop_back();
 		auto strList = split(cur, ',');
 		//이름, 최소, 최대, 골드, 그룹
-		weeklyList.push_back({ ANSIToUTF8(strList[0].c_str()), str2int(strList[1]), str2int(strList[1]), str2int(strList[2]), str2int(strList[3]) });
+		weeklyList.push_back({ ANSIToUTF8(strList[0].c_str()), str2int(strList[1]), str2int(strList[2]), str2int(strList[3]), str2int(strList[4]) });
 	}
 	fclose(fp);
 
