@@ -175,13 +175,16 @@ public:
 						
 						auto expd = GetExpdInfo(res[1], msg.author.ID.string());
 						rep = u8"```\n";
+						EXPEDITION expdTmp(msg.author.ID.string());
 						for (auto i : expd) {
+							expdTmp.AddCharacter(i.second, i.first);
 							rep += i.second + u8"(Lv." + ANSIToUTF8(ll2str(i.first).c_str()) + u8")\n";
 							fprintf(fp, "%s\n", i.second.c_str());
 							FILE * cfp = fopen((rt + "/" + i.second + ".txt").c_str(), "w");
 							fprintf(cfp, "%lld\n", i.first);
 							fclose(cfp);
 						}
+						expdList.push_back(expdTmp);
 						rep += u8"총 " + ll2str(expd.size()) + u8"개의 캐릭터를 등록하였습니다.```";
 						sendMessage(msg.channelID, rep);
 						fclose(fp);
