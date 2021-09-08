@@ -215,7 +215,7 @@ string GetMariShopInfo(ll crystal) {
 					amount = 0;
 					for (int i = 0; i < wstr2.size(); ++i) p1.pop_back();
 					string item = wstr2str(p1);
-					res += item + "(1개당 ";
+					res += item + " (1개당 ";
 					item.pop_back();
 					string tmp = "";
 					while (item.size() && item.back() != '[') {
