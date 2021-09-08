@@ -14,6 +14,8 @@
   - 성공 확률 10%
 
 # Todo
+- Edit weekly, daily data form 
+  - Use index for DB
 - Scheduling for commands
 - Refactoring
   - Function that get information from web
