@@ -275,6 +275,11 @@ public:
 				rep += u8"```";
 				sendMessage(msg.channelID, rep);
 			}
+			else if (res[0] == u8"항아리") {
+				ud randomNumber(1, 10000);
+				if (randomNumber(gen) <= 1000) sendMessage(msg.channelID, u8"아; 이게 뜨네;;");
+				else sendMessage(msg.channelID, u8"77777777777777ㅓㅓㅓㅓㅓㅓㅓㅓㅓㅓ억");
+			}
 		}
 	}
 };
