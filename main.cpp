@@ -11,6 +11,18 @@ using namespace utility;
 
 typedef long long ll;
 
+char tmpChar[1010];
+random_device rd;
+mt19937 gen(rd());
+
+typedef uniform_int_distribution<int> ud;
+typedef uniform_int_distribution<ll> ud2;
+
+map<string, string> expd;
+const string dataRoot = "./data/";
+const string expdRoot = dataRoot + "expd/";
+
+
 string ANSIToUTF8(const char* pszCode);
 string UTF8ToANSI(const char* pszCode);
 wstring str2wstr(const string& _src);
@@ -19,240 +31,63 @@ vector<string> split(string input, char delimiter);
 string num2per(ll num);
 ll str2ll(const string& str);
 string ll2str(ll num);
+ll GetLevelInfo(const string& name, const string& ID);
+vector<pair<int, string>> GetExpdInfo(const string& name, const string& ID);
+string GetMariShopInfo(ll crystal);
 
-char tmpChar[1010];
 class EXPEDITION {
-	string id;
-public:
-	EXPEDITION():id(""){}
-	EXPEDITION(const string & id): id(id){}
-	
+	struct RAID{
+		string name;
+		int lb, ub, gold, group;
+	};
+	static vector<RAID> weaklyList, dailyList;
 	class CHARACTER {
 		string name;
 		int level;
 		vector<pair<int, int>> daily, weekly;
 	public:
-		CHARACTER(): name(""), level(0) {}
-		CHARACTER(const string & name, const int lvl): name(name), level(lvl){}
+		CHARACTER() : name(""), level(0) {}
+		CHARACTER(const string& name, const int lvl) : name(name), level(lvl) {}
 		string GetName() { return name; }
 		int GetLevel() { return level; }
 		void SetName(const string& name) { this->name = name; }
 		void SetLevel() { this->level = level; }
 	};
+	static void InitTodoList() {
+		if (weaklyList.size() && dailyList.size()) return;
+
+		FILE* fp = fopen((dataRoot + "weakly.csv").c_str(), "r");
+
+		//주간 숙제(골드 수급)
+		while (fgets(tmpChar, 1010, fp)) {
+			string cur = tmpChar;
+			if (cur.back() == '\n') cur.pop_back();
+			auto strList = split(cur, ',');
+			//이름, 최소, 최대, 골드, 그룹
+			weaklyList.push_back({ strList[0], str2ll(strList[1]), str2ll(strList[1]), str2ll(strList[2]), str2ll(strList[3]) });
+		}
+		fclose(fp);
+
+		fp = fopen((dataRoot + "daily.csv").c_str(), "r");
+		//일간 숙제(가디언 토벌)
+		while (fgets(tmpChar, 1010, fp)) {
+			string cur = tmpChar;
+			if (cur.back() == '\n') cur.pop_back();
+			auto strList = split(cur, ',');
+			dailyList.push_back({ strList[0], str2ll(strList[1]), -1, 0, 0 });
+		}
+		fclose(fp);
+	}
+	string id;
+	vector<CHARACTER> charList;
+public:
+	EXPEDITION() :id("") { InitTodoList(); }
+	EXPEDITION(const string& id) : id(id) {}
+	string GetDailyInfo() {
+		string res = "```\n";
+	}
 };
-ll GetLevelInfo(const string &name, const string &ID) {
-	using namespace web;
-	using namespace web::http;
-	using namespace web::http::client;
-	using namespace concurrency::streams;
-	string_t fName = str2wstr(UTF8ToANSI(ID.c_str())) + U("glvl.html");
-	string_t wName = str2wstr(UTF8ToANSI(name.c_str()));
-	auto fileStream = std::make_shared<concurrency::streams::ostream>();
-	
-	pplx::task<void> requestTask = concurrency::streams::fstream::open_ostream(fName).then([=](concurrency::streams::ostream outFile)
-		{
-			*fileStream = outFile;
 
-			http_client_config conf;
-			conf.set_timeout(seconds(4));
-
-			http_client client(U("http://lostark.game.onstove.com/Profile/Character/"));
-			uri_builder builder(uri::encode_uri(wName));
-			return client.request(methods::GET, builder.to_string());
-		}).then([=](http_response response)
-			{
-				return response.body().read_to_end(fileStream->streambuf());
-			}).then([=](size_t nVal)
-				{
-					return fileStream->close();
-				});
-
-			try
-			{
-				requestTask.wait();
-			}
-			catch (const std::exception& e)
-			{
-				printf("Error exception:%s\n", e.what());
-			}
-	locale::global(locale(".UTF-8"));
-	wifstream f(fName);
-	
-	wstring wstr = L"";
-	while(!f.eof()){
-		getline(f, wstr);
-		if (wstr.find(L"달성 아이템 레벨") != wstring::npos){
-			auto p1 = wstr.substr(wstr.find(L"Lv.</small>") + 11);
-			auto wLvl = p1.substr(0, p1.find(L"<small>"));
-			string tmp = wstr2str(wLvl);
-			ll res = 0;
-			for (auto i : tmp)
-				if (i != ',')
-					res = res * 10 + (i - '0');
-			f.close();
-			system("del *.html");
-			return res;
-		}
-	}
-	f.close();
-	system("del *.html");
-	return 0;
-}
-vector<pair<int, string>> GetExpdInfo(const string& name, const string& ID) {
-	using namespace web;
-	using namespace web::http;
-	using namespace web::http::client;
-	using namespace concurrency::streams;
-	string_t fName = str2wstr(UTF8ToANSI(ID.c_str())) + U("gexpd.html");
-	string_t wName = str2wstr(UTF8ToANSI(name.c_str()));
-	auto fileStream = std::make_shared<concurrency::streams::ostream>();
-
-	pplx::task<void> requestTask = concurrency::streams::fstream::open_ostream(fName).then([=](concurrency::streams::ostream outFile)
-		{
-			*fileStream = outFile;
-
-			http_client_config conf;
-			conf.set_timeout(seconds(4));
-
-			http_client client(U("http://lostark.game.onstove.com/Profile/Character/"));
-			uri_builder builder(uri::encode_uri(wName));
-			return client.request(methods::GET, builder.to_string());
-		}).then([=](http_response response)
-			{
-				return response.body().read_to_end(fileStream->streambuf());
-			}).then([=](size_t nVal)
-				{
-					return fileStream->close();
-				});
-
-			try
-			{
-				requestTask.wait();
-			}
-			catch (const std::exception& e)
-			{
-				printf("Error exception:%s\n", e.what());
-			}
-	locale::global(locale(".UTF-8"));
-	wifstream f(fName);
-	wstring wstr = L"";
-	vector<pair<int, string>> res;
-	while (!f.eof()) {
-		getline(f, wstr);
-		const wstring fStr = L"/Profile/Character/";
-		auto idx = wstr.find(fStr);
-		if (idx != wstring::npos) {
-			idx += fStr.length();
-			auto p1 = wstr.substr(idx);
-			if (p1.find(L"'\">") == wstring::npos) continue;
-			p1.pop_back(); p1.pop_back(); p1.pop_back();
-			string uStr = ANSIToUTF8(wstr2str(p1).c_str());
-			auto level = GetLevelInfo(uStr, "tmp");
-			if(level >= 1325)
-				res.push_back({ -level, uStr });
-		}
-	}
-	f.close();
-	system("del *.html");
-	sort(res.begin(), res.end());
-	res.erase(unique(res.begin(), res.end()), res.end());
-	for (auto &i : res)
-		i.first *= -1;
-	return res;
-}
-string GetMariShopInfo(ll crystal) {
-	using namespace web;
-	using namespace web::http;
-	using namespace web::http::client;
-	using namespace concurrency::streams;
-	string_t fName = L"mari.html";
-	auto fileStream = std::make_shared<concurrency::streams::ostream>();
-
-	pplx::task<void> requestTask = concurrency::streams::fstream::open_ostream(fName).then([=](concurrency::streams::ostream outFile)
-		{
-			*fileStream = outFile;
-
-			http_client_config conf;
-			conf.set_timeout(seconds(4));
-
-			http_client client(U("https://lostark.game.onstove.com/Shop"));
-			return client.request(methods::GET);
-		}).then([=](http_response response)
-			{
-				return response.body().read_to_end(fileStream->streambuf());
-			}).then([=](size_t nVal)
-				{
-					return fileStream->close();
-				});
-
-			try
-			{
-				requestTask.wait();
-			}
-			catch (const std::exception& e)
-			{
-				printf("Error exception:%s\n", e.what());
-			}
-			locale::global(locale(".UTF-8"));
-			wifstream f(fName);
-			wstring wstr = L"";
-			string res = "```현재 마리샵에 판매되고 있는 아이템 정보입니다.\n입력하신 크리스탈 가격은 수수료를 제외한 가격으로 계산됩니다.\n";
-			bool flag = 0;
-			ll amount = 0;
-			while (!f.eof()) {
-				getline(f, wstr);
-				const wstring fStr = L"<span class=\"item-name\">";
-				const wstring fStr2 = L"<span class=\"amount\" data-format=\"currency\">";
-
-				auto idx = wstr.find(fStr);
-				auto idx2 = wstr.find(fStr2);
-
-				if (idx != wstring::npos) {
-					idx += fStr.length();
-					auto p1 = wstr.substr(idx);
-					wstring wstr2 = L"</span>";
-					if (p1.find(wstr2) == wstring::npos) continue;
-					amount = 0;
-					for (int i = 0; i < wstr2.size(); ++i) p1.pop_back();
-					string item = wstr2str(p1);
-					res += item + " (1개당 ";
-					item.pop_back();
-					string tmp = "";
-					while (item.size() && item.back() != '[') {
-						if ('0' <= item.back() && item.back() <= '9')
-							tmp.push_back(item.back());
-						item.pop_back();
-					}
-					reverse(tmp.begin(), tmp.end());
-					amount = str2ll(tmp);
-					flag = 1;
-				}
-				if (flag && idx2 != wstring::npos) {
-					idx2 += fStr2.length();
-					auto p1 = wstr.substr(idx2);
-					wstring wstr2 = L"</span>";
-					if (p1.find(wstr2) == wstring::npos) continue;
-					for (int i = 0; i < wstr2.size(); ++i) p1.pop_back();
-					ll price = str2ll(wstr2str(p1));
-					sprintf(tmpChar, "%.2lf", (((double)crystal / 95.0) * (double)price / (double)amount));
-					string strPrice = tmpChar;
-					res += strPrice + "골드)\n";
-					flag = 0;
-				}
-			}
-			res += "```";
-			f.close();
-			system("del *.html");
-			return res;
-}
-random_device rd;
-mt19937 gen(rd());
-
-typedef uniform_int_distribution<int> ud;
-typedef uniform_int_distribution<ll> ud2;
-
-map<string, string> expd;
-const string expdRoot = "./data/expd/";
 class MyClientClass : public SleepyDiscord::DiscordClient {
 	vector<string> LoadFileList(const string root) {
 		vector<string> res;
@@ -394,11 +229,11 @@ public:
 	}
 };
 void Test() {
-	cout << GetMariShopInfo(1250);
+	EXPEDITION e;
 	system("pause");
 }
 int main() {
-	//Test(); return 0;
+	Test(); return 0;
 	setlocale(LC_ALL, "ko_KR.utf8");
 	srand(time(0)); 
 
@@ -459,8 +294,6 @@ string wstr2str(const wstring& _src) {
 	USES_CONVERSION;
 	return string(W2A(_src.c_str()));
 }
-
-
 vector<string> split(string input, char delimiter) {
 	vector<string> answer;
 	stringstream ss(input);
@@ -504,4 +337,218 @@ string ll2str(ll num) {
 	}
 	reverse(res.begin(), res.end());
 	return res;
+}
+ll GetLevelInfo(const string& name, const string& ID) {
+	using namespace web;
+	using namespace web::http;
+	using namespace web::http::client;
+	using namespace concurrency::streams;
+	string_t fName = str2wstr(UTF8ToANSI(ID.c_str())) + U("glvl.html");
+	string_t wName = str2wstr(UTF8ToANSI(name.c_str()));
+	auto fileStream = std::make_shared<concurrency::streams::ostream>();
+
+	pplx::task<void> requestTask = concurrency::streams::fstream::open_ostream(fName).then([=](concurrency::streams::ostream outFile)
+		{
+			*fileStream = outFile;
+
+			http_client_config conf;
+			conf.set_timeout(seconds(4));
+
+			http_client client(U("http://lostark.game.onstove.com/Profile/Character/"));
+			uri_builder builder(uri::encode_uri(wName));
+			return client.request(methods::GET, builder.to_string());
+		}).then([=](http_response response)
+			{
+				return response.body().read_to_end(fileStream->streambuf());
+			}).then([=](size_t nVal)
+				{
+					return fileStream->close();
+				});
+
+			try
+			{
+				requestTask.wait();
+			}
+			catch (const std::exception& e)
+			{
+				printf("Error exception:%s\n", e.what());
+			}
+			locale::global(locale(".UTF-8"));
+			wifstream f(fName);
+
+			wstring wstr = L"";
+			while (!f.eof()) {
+				getline(f, wstr);
+				if (wstr.find(L"달성 아이템 레벨") != wstring::npos) {
+					auto p1 = wstr.substr(wstr.find(L"Lv.</small>") + 11);
+					auto wLvl = p1.substr(0, p1.find(L"<small>"));
+					string tmp = wstr2str(wLvl);
+					ll res = 0;
+					for (auto i : tmp)
+						if (i != ',')
+							res = res * 10 + (i - '0');
+					f.close();
+					system("del *.html");
+					return res;
+				}
+			}
+			f.close();
+			system("del *.html");
+			return 0;
+}
+vector<pair<int, string>> GetExpdInfo(const string& name, const string& ID) {
+	using namespace web;
+	using namespace web::http;
+	using namespace web::http::client;
+	using namespace concurrency::streams;
+	string_t fName = str2wstr(UTF8ToANSI(ID.c_str())) + U("gexpd.html");
+	string_t wName = str2wstr(UTF8ToANSI(name.c_str()));
+	auto fileStream = std::make_shared<concurrency::streams::ostream>();
+
+	pplx::task<void> requestTask = concurrency::streams::fstream::open_ostream(fName).then([=](concurrency::streams::ostream outFile)
+		{
+			*fileStream = outFile;
+
+			http_client_config conf;
+			conf.set_timeout(seconds(4));
+
+			http_client client(U("http://lostark.game.onstove.com/Profile/Character/"));
+			uri_builder builder(uri::encode_uri(wName));
+			return client.request(methods::GET, builder.to_string());
+		}).then([=](http_response response)
+			{
+				return response.body().read_to_end(fileStream->streambuf());
+			}).then([=](size_t nVal)
+				{
+					return fileStream->close();
+				});
+
+			try
+			{
+				requestTask.wait();
+			}
+			catch (const std::exception& e)
+			{
+				printf("Error exception:%s\n", e.what());
+			}
+			locale::global(locale(".UTF-8"));
+			wifstream f(fName);
+			wstring wstr = L"";
+			vector<pair<int, string>> res;
+			while (!f.eof()) {
+				getline(f, wstr);
+				const wstring fStr = L"/Profile/Character/";
+				auto idx = wstr.find(fStr);
+				if (idx != wstring::npos) {
+					idx += fStr.length();
+					auto p1 = wstr.substr(idx);
+					if (p1.find(L"'\">") == wstring::npos) continue;
+					p1.pop_back(); p1.pop_back(); p1.pop_back();
+					string uStr = ANSIToUTF8(wstr2str(p1).c_str());
+					auto level = GetLevelInfo(uStr, "tmp");
+					if (level >= 1325)
+						res.push_back({ -level, uStr });
+				}
+			}
+			f.close();
+			system("del *.html");
+			sort(res.begin(), res.end());
+			res.erase(unique(res.begin(), res.end()), res.end());
+			for (auto& i : res)
+				i.first *= -1;
+			return res;
+}
+string GetMariShopInfo(ll crystal) {
+	using namespace web;
+	using namespace web::http;
+	using namespace web::http::client;
+	using namespace concurrency::streams;
+	string_t fName = L"mari.html";
+	auto fileStream = std::make_shared<concurrency::streams::ostream>();
+
+	pplx::task<void> requestTask = concurrency::streams::fstream::open_ostream(fName).then([=](concurrency::streams::ostream outFile)
+		{
+			*fileStream = outFile;
+
+			http_client_config conf;
+			conf.set_timeout(seconds(4));
+
+			http_client client(U("https://lostark.game.onstove.com/Shop"));
+			return client.request(methods::GET);
+		}).then([=](http_response response)
+			{
+				return response.body().read_to_end(fileStream->streambuf());
+			}).then([=](size_t nVal)
+				{
+					return fileStream->close();
+				});
+
+			try
+			{
+				requestTask.wait();
+			}
+			catch (const std::exception& e)
+			{
+				printf("Error exception:%s\n", e.what());
+			}
+
+			locale::global(locale(".UTF-8"));
+			wifstream f(fName);
+			wstring wstr = L"";
+			string res = "```현재 마리샵에 판매되고 있는 아이템 정보입니다. 입력하신 크리스탈 가격은 수수료를 제외한 가격으로 계산됩니다.\n";
+			bool flag = 0;
+			bool newLine = 0;
+			ll amount = 0;
+			const int align = 70;
+			ll len = 0;
+			while (!f.eof()) {
+				getline(f, wstr);
+				const wstring fStr = L"<span class=\"item-name\">";
+				const wstring fStr2 = L"<span class=\"amount\" data-format=\"currency\">";
+
+				auto idx = wstr.find(fStr);
+				auto idx2 = wstr.find(fStr2);
+
+				if (idx != wstring::npos) {
+					idx += fStr.length();
+					auto p1 = wstr.substr(idx);
+					wstring wstr2 = L"</span>";
+					if (p1.find(wstr2) == wstring::npos) continue;
+					len = res.size();
+					amount = 0;
+					for (int i = 0; i < wstr2.size(); ++i) p1.pop_back();
+					string item = wstr2str(p1);
+					res += "- " + item + " (1개당 ";
+					item.pop_back();
+					string tmp = "";
+					while (item.size() && item.back() != '[') {
+						if ('0' <= item.back() && item.back() <= '9')
+							tmp.push_back(item.back());
+						item.pop_back();
+					}
+					std::reverse(tmp.begin(), tmp.end());
+					amount = str2ll(tmp);
+					flag = 1;
+				}
+				if (flag && idx2 != wstring::npos) {
+					idx2 += fStr2.length();
+					auto p1 = wstr.substr(idx2);
+					wstring wstr2 = L"</span>";
+					if (p1.find(wstr2) == wstring::npos) continue;
+					for (int i = 0; i < wstr2.size(); ++i) p1.pop_back();
+					ll price = str2ll(wstr2str(p1));
+					sprintf(tmpChar, "%.2lf", (((double)crystal / 95.0) * (double)price / (double)amount));
+					string strPrice = tmpChar;
+					res += strPrice + "골드)";
+					len = res.size() - len;
+					if (newLine) res += "\n";
+					else for (int i = 0; i < align - len; ++i) res.push_back(' ');
+					newLine ^= 1;
+					flag = 0;
+				}
+			}
+			res += "```";
+			f.close();
+			system("del *.html");
+			return res;
 }
