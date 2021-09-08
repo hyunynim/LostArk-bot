@@ -16,6 +16,25 @@ string UTF8ToANSI(const char* pszCode);
 wstring str2wstr(const string& _src);
 string wstr2str(const wstring& _src);
 
+class EXPEDITION {
+	string id;
+public:
+	EXPEDITION():id(""){}
+	EXPEDITION(const string & id): id(id){}
+	
+	class CHARACTER {
+		string name;
+		int level;
+		vector<pair<int, int>> daily, weekly;
+	public:
+		CHARACTER(): name(""), level(0) {}
+		CHARACTER(const string & name, const int lvl): name(name), level(lvl){}
+		string GetName() { return name; }
+		int GetLevel() { return level; }
+		void SetName(const string& name) { this->name = name; }
+		void SetLevel() { this->level = level; }
+	};
+};
 ll GetLevelInfo(const string &name, const string &ID) {
 	using namespace web;
 	using namespace web::http;
@@ -172,6 +191,11 @@ public:
 	void onMessage(SleepyDiscord::Message msg) override {
 		if (msg.author.bot) return;
 		if (msg.startsWith("!")) {
+			if (msg.channelID.string() != u8"884882368056414289") {
+				sendMessage(msg.channelID, u8"명령어 채널을 이용해주세요.");
+				deleteMessage(msg.channelID, msg.ID);
+				return;
+			}
 			auto content = msg.content.substr(1);
 
 			auto res = split(content, u8' ');
