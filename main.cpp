@@ -567,7 +567,7 @@ string GetMariShopInfo(ll crystal) {
 			string res = "```현재 마리샵에 판매되고 있는 아이템 정보입니다. 입력하신 크리스탈 가격은 수수료를 제외한 가격으로 계산됩니다.\n\n";
 			len = 0;
 			for (int i = 0; i < strArr.size() / 2; ++i) {
-				if (i == 6) {
+				if (i == 6 || i == 12) {
 					for (int j = 0; j < len; ++j)
 						res.push_back('=');
 					res += "=\n";
