@@ -15,7 +15,12 @@ string ANSIToUTF8(const char* pszCode);
 string UTF8ToANSI(const char* pszCode);
 wstring str2wstr(const string& _src);
 string wstr2str(const wstring& _src);
+vector<string> split(string input, char delimiter);
+string num2per(ll num);
+ll str2ll(const string& str);
+string ll2str(ll num);
 
+char tmpChar[1010];
 class EXPEDITION {
 	string id;
 public:
@@ -155,7 +160,91 @@ vector<pair<int, string>> GetExpdInfo(const string& name, const string& ID) {
 		i.first *= -1;
 	return res;
 }
+string GetMariShopInfo(ll crystal) {
+	using namespace web;
+	using namespace web::http;
+	using namespace web::http::client;
+	using namespace concurrency::streams;
+	string_t fName = L"mari.html";
+	auto fileStream = std::make_shared<concurrency::streams::ostream>();
 
+	pplx::task<void> requestTask = concurrency::streams::fstream::open_ostream(fName).then([=](concurrency::streams::ostream outFile)
+		{
+			*fileStream = outFile;
+
+			http_client_config conf;
+			conf.set_timeout(seconds(4));
+
+			http_client client(U("https://lostark.game.onstove.com/Shop"));
+			return client.request(methods::GET);
+		}).then([=](http_response response)
+			{
+				return response.body().read_to_end(fileStream->streambuf());
+			}).then([=](size_t nVal)
+				{
+					return fileStream->close();
+				});
+
+			try
+			{
+				requestTask.wait();
+			}
+			catch (const std::exception& e)
+			{
+				printf("Error exception:%s\n", e.what());
+			}
+			locale::global(locale(".UTF-8"));
+			wifstream f(fName);
+			wstring wstr = L"";
+			string res = "```현재 마리샵에 판매되고 있는 아이템 정보입니다.\n입력하신 크리스탈 가격은 수수료를 제외한 가격으로 계산됩니다.\n";
+			bool flag = 0;
+			ll amount = 0;
+			while (!f.eof()) {
+				getline(f, wstr);
+				const wstring fStr = L"<span class=\"item-name\">";
+				const wstring fStr2 = L"<span class=\"amount\" data-format=\"currency\">";
+
+				auto idx = wstr.find(fStr);
+				auto idx2 = wstr.find(fStr2);
+
+				if (idx != wstring::npos) {
+					idx += fStr.length();
+					auto p1 = wstr.substr(idx);
+					wstring wstr2 = L"</span>";
+					if (p1.find(wstr2) == wstring::npos) continue;
+					amount = 0;
+					for (int i = 0; i < wstr2.size(); ++i) p1.pop_back();
+					string item = wstr2str(p1);
+					res += item + "(1개당 ";
+					item.pop_back();
+					string tmp = "";
+					while (item.size() && item.back() != '[') {
+						if ('0' <= item.back() && item.back() <= '9')
+							tmp.push_back(item.back());
+						item.pop_back();
+					}
+					reverse(tmp.begin(), tmp.end());
+					amount = str2ll(tmp);
+					flag = 1;
+				}
+				if (flag && idx2 != wstring::npos) {
+					idx2 += fStr2.length();
+					auto p1 = wstr.substr(idx2);
+					wstring wstr2 = L"</span>";
+					if (p1.find(wstr2) == wstring::npos) continue;
+					for (int i = 0; i < wstr2.size(); ++i) p1.pop_back();
+					ll price = str2ll(wstr2str(p1));
+					sprintf(tmpChar, "%.2lf", (((double)crystal / 95.0) * (double)price / (double)amount));
+					string strPrice = tmpChar;
+					res += strPrice + "골드)\n";
+					flag = 0;
+				}
+			}
+			res += "```";
+			f.close();
+			system("del *.html");
+			return res;
+}
 random_device rd;
 mt19937 gen(rd());
 
@@ -290,68 +379,22 @@ public:
 					if (fp != NULL) fclose(fp);
 				}
 			}
-			else if (res[0] == u8"test") {
-				
+			else if (res[0] == u8"마리") {
+				if (res.size() != 2) {
+					sendMessage(msg.channelID, u8"!마리 [크리스탈 가격]");
+					return;
+				}
+				auto rep = ANSIToUTF8(GetMariShopInfo(str2ll(res[1])).c_str());
+				sendMessage(msg.channelID, rep);
 			}
 		}
-	}
-	vector<string> split(string input, char delimiter) {
-		vector<string> answer;
-		stringstream ss(input);
-		string temp;
-
-		while (getline(ss, temp, delimiter)) {
-			answer.push_back(temp);
-		}
-
-		return answer;
 	}
 	void InitExpedition() {
 
 	}
-	string num2per(ll num) {
-		string res = "";
-		bool flag = 0;
-		while (num) {
-			if (!flag) res.push_back('%');
-			res.push_back(num % 10 + '0');
-			if (!flag) {
-				res.push_back('.');
-				flag = 1;
-			}
-			num /= 10;
-		}
-		reverse(res.begin(), res.end());
-		return res;
-	}
-	ll str2ll(const string& str) {
-		ll res = 0;
-		for (int i = 0; i < str.size(); ++i) {
-			if ('0' <= str[i] && str[i] <= '9')
-				res = res * 10 + (str[i] - '0');
-			else return -1;
-		}
-		return res;
-	}
-	string ll2str(ll num) {
-		string res = "";
-		while (num) {
-			res.push_back(num % 10 + '0');
-			num /= 10;
-		}
-		reverse(res.begin(), res.end());
-		return res;
-	}
 };
-
 void Test() {
-	auto res = GetExpdInfo(u8"안홍자", u8"541542135431522");
-	sort(res.begin(), res.end());
-	res.erase(unique(res.begin(), res.end()), res.end());
-	for (auto i : res) {
-		i.first *= -1;
-		cout << i.first << i.second << endl;
-	}
+	cout << GetMariShopInfo(1250);
 	system("pause");
 }
 int main() {
@@ -415,4 +458,50 @@ wstring str2wstr(const string& _src) {
 string wstr2str(const wstring& _src) {
 	USES_CONVERSION;
 	return string(W2A(_src.c_str()));
+}
+
+
+vector<string> split(string input, char delimiter) {
+	vector<string> answer;
+	stringstream ss(input);
+	string temp;
+
+	while (getline(ss, temp, delimiter)) {
+		answer.push_back(temp);
+	}
+
+	return answer;
+}
+string num2per(ll num) {
+	string res = "";
+	bool flag = 0;
+	while (num) {
+		if (!flag) res.push_back('%');
+		res.push_back(num % 10 + '0');
+		if (!flag) {
+			res.push_back('.');
+			flag = 1;
+		}
+		num /= 10;
+	}
+	reverse(res.begin(), res.end());
+	return res;
+}
+ll str2ll(const string& str) {
+	ll res = 0;
+	for (int i = 0; i < str.size(); ++i) {
+		if ('0' <= str[i] && str[i] <= '9')
+			res = res * 10 + (str[i] - '0');
+		else return -1;
+	}
+	return res;
+}
+string ll2str(ll num) {
+	string res = "";
+	while (num) {
+		res.push_back(num % 10 + '0');
+		num /= 10;
+	}
+	reverse(res.begin(), res.end());
+	return res;
 }
