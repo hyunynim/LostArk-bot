@@ -24,6 +24,11 @@
 - Add commands
   - 원정대, 항아리
 - Add expedition managing
+- Edit commands
+  - 마리
+    - 개당 가격 추가
+  - 원정대등록
+    - Add data to expedition list
 
 # 2021-09-08
 - Command List(starts with '!')
