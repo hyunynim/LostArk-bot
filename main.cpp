@@ -30,24 +30,29 @@ string wstr2str(const wstring& _src);
 vector<string> split(string input, char delimiter);
 string num2per(ll num);
 ll str2ll(const string& str);
+int str2int(const string& str);
 string ll2str(ll num);
 ll GetLevelInfo(const string& name, const string& ID);
 vector<pair<int, string>> GetExpdInfo(const string& name, const string& ID);
 string GetMariShopInfo(ll crystal);
-
+struct RAID {
+	string name;
+	int lb, ub, gold, group;
+};
 class EXPEDITION {
-	struct RAID{
-		string name;
-		int lb, ub, gold, group;
-	};
 	static vector<RAID> weaklyList, dailyList;
 	class CHARACTER {
 		string name;
 		int level;
-		vector<pair<int, int>> daily, weekly;
+		vector<pair<RAID, bool>> daily, weekly;
 	public:
 		CHARACTER() : name(""), level(0) {}
-		CHARACTER(const string& name, const int lvl) : name(name), level(lvl) {}
+		CHARACTER(const string& name, const int lvl) : name(name), level(lvl) {
+			for (auto it = dailyList.rbegin(); it != dailyList.rend(); ++it) {
+				if ((*it).lb == -1 || (*it).lb <= lvl)
+					daily.push_back({});
+			}
+		}
 		string GetName() { return name; }
 		int GetLevel() { return level; }
 		void SetName(const string& name) { this->name = name; }
@@ -64,7 +69,7 @@ class EXPEDITION {
 			if (cur.back() == '\n') cur.pop_back();
 			auto strList = split(cur, ',');
 			//이름, 최소, 최대, 골드, 그룹
-			weaklyList.push_back({ strList[0], str2ll(strList[1]), str2ll(strList[1]), str2ll(strList[2]), str2ll(strList[3]) });
+			weaklyList.push_back({ strList[0], str2int(strList[1]), str2int(strList[1]), str2int(strList[2]), str2int(strList[3]) });
 		}
 		fclose(fp);
 
@@ -74,14 +79,14 @@ class EXPEDITION {
 			string cur = tmpChar;
 			if (cur.back() == '\n') cur.pop_back();
 			auto strList = split(cur, ',');
-			dailyList.push_back({ strList[0], str2ll(strList[1]), -1, 0, 0 });
+			dailyList.push_back({ strList[0], str2int(strList[1]), -1, 0, 0 });
 		}
 		fclose(fp);
 	}
 	string id;
 	vector<CHARACTER> charList;
 public:
-	EXPEDITION() :id("") { InitTodoList(); }
+	EXPEDITION() :id("") { }
 	EXPEDITION(const string& id) : id(id) {}
 	string GetDailyInfo() {
 		string res = "```\n";
@@ -104,7 +109,9 @@ class MyClientClass : public SleepyDiscord::DiscordClient {
 		}
 		return res;
 	}
+	void InitExpedition() {
 
+	}
 public:
 	using SleepyDiscord::DiscordClient::DiscordClient;
 	void MessageSend(SleepyDiscord::Message & message, string str) {
@@ -114,9 +121,17 @@ public:
 	string learningAuth = "";
 	void onMessage(SleepyDiscord::Message msg) override {
 		if (msg.author.bot) return;
+
+		//PM test
+		//SleepyDiscord::Channel pmChannel = createDirectMessageChannel(msg.author.ID);
+		//createDirectMessageChannel(msg.author.ID);
+		//sendMessage(pmChannel.ID, "Test");
+
 		if (msg.startsWith("!")) {
+			if (msg.length() == 1) return;
 			if (msg.channelID.string() != u8"884882368056414289") {
 				sendMessage(msg.channelID, u8"명령어 채널을 이용해주세요.");
+				
 				deleteMessage(msg.channelID, msg.ID);
 				return;
 			}
@@ -224,16 +239,13 @@ public:
 			}
 		}
 	}
-	void InitExpedition() {
-
-	}
 };
 void Test() {
 	EXPEDITION e;
 	system("pause");
 }
 int main() {
-	Test(); return 0;
+	//Test(); return 0;
 	setlocale(LC_ALL, "ko_KR.utf8");
 	srand(time(0)); 
 
@@ -322,6 +334,15 @@ string num2per(ll num) {
 }
 ll str2ll(const string& str) {
 	ll res = 0;
+	for (int i = 0; i < str.size(); ++i) {
+		if ('0' <= str[i] && str[i] <= '9')
+			res = res * 10 + (str[i] - '0');
+		else return -1;
+	}
+	return res;
+}
+int str2int(const string& str) {
+	int res = 0;
 	for (int i = 0; i < str.size(); ++i) {
 		if ('0' <= str[i] && str[i] <= '9')
 			res = res * 10 + (str[i] - '0');
@@ -495,12 +516,10 @@ string GetMariShopInfo(ll crystal) {
 			locale::global(locale(".UTF-8"));
 			wifstream f(fName);
 			wstring wstr = L"";
-			string res = "```현재 마리샵에 판매되고 있는 아이템 정보입니다. 입력하신 크리스탈 가격은 수수료를 제외한 가격으로 계산됩니다.\n";
 			bool flag = 0;
-			bool newLine = 0;
-			ll amount = 0;
-			const int align = 70;
-			ll len = 0;
+			ll amount = 0, len = 0;
+			vector<string> strArr;
+			string strTmp;
 			while (!f.eof()) {
 				getline(f, wstr);
 				const wstring fStr = L"<span class=\"item-name\">";
@@ -514,11 +533,10 @@ string GetMariShopInfo(ll crystal) {
 					auto p1 = wstr.substr(idx);
 					wstring wstr2 = L"</span>";
 					if (p1.find(wstr2) == wstring::npos) continue;
-					len = res.size();
 					amount = 0;
 					for (int i = 0; i < wstr2.size(); ++i) p1.pop_back();
 					string item = wstr2str(p1);
-					res += "- " + item + " (1개당 ";
+					strTmp = "- " + item + " (1개당 ";
 					item.pop_back();
 					string tmp = "";
 					while (item.size() && item.back() != '[') {
@@ -539,13 +557,26 @@ string GetMariShopInfo(ll crystal) {
 					ll price = str2ll(wstr2str(p1));
 					sprintf(tmpChar, "%.2lf", (((double)crystal / 95.0) * (double)price / (double)amount));
 					string strPrice = tmpChar;
-					res += strPrice + "골드)";
-					len = res.size() - len;
-					if (newLine) res += "\n";
-					else for (int i = 0; i < align - len; ++i) res.push_back(' ');
-					newLine ^= 1;
+					strTmp += strPrice + "골드)";
+					strArr.push_back(strTmp);
 					flag = 0;
 				}
+			}
+			const int align = 70;
+			const int itemAmountPerTime = 6;
+			string res = "```현재 마리샵에 판매되고 있는 아이템 정보입니다. 입력하신 크리스탈 가격은 수수료를 제외한 가격으로 계산됩니다.\n\n";
+			len = 0;
+			for (int i = 0; i < strArr.size() / 2; ++i) {
+				if (i == 6) {
+					for (int j = 0; j < len; ++j)
+						res.push_back('=');
+					res += "=\n";
+				}
+				res += strArr[i];
+				for (int j = 0; j < 70 - strArr[i].length(); ++j)
+					res.push_back(' ');
+				res += strArr[i + itemAmountPerTime * 3] + "\n";
+				len = max((unsigned long long)len, 70 + strArr[i + itemAmountPerTime * 3].length());
 			}
 			res += "```";
 			f.close();
