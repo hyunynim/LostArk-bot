@@ -35,12 +35,14 @@ string ll2str(ll num);
 ll GetLevelInfo(const string& name, const string& ID);
 vector<pair<int, string>> GetExpdInfo(const string& name, const string& ID);
 string GetMariShopInfo(ll crystal);
+vector<string> LoadFileList(const string root);
 struct RAID {
 	string name;
 	int lb, ub, gold, group;
 };
+vector<RAID> weeklyList, dailyList;
+void InitTodoList();
 class EXPEDITION {
-	static vector<RAID> weaklyList, dailyList;
 	class CHARACTER {
 		string name;
 		int level;
@@ -49,69 +51,61 @@ class EXPEDITION {
 		CHARACTER() : name(""), level(0) {}
 		CHARACTER(const string& name, const int lvl) : name(name), level(lvl) {
 			for (auto it = dailyList.rbegin(); it != dailyList.rend(); ++it) {
-				if ((*it).lb == -1 || (*it).lb <= lvl)
-					daily.push_back({});
+				if ((*it).lb == -1 || (*it).lb <= lvl && (daily.empty() || daily.back().first.group != (*it).group))
+					daily.push_back({ *it, 0 });
+			}
+			for (auto it = weeklyList.rbegin(); it != weeklyList.rend(); ++it) {
+				if ((*it).lb == -1 || (*it).lb <= lvl && (weekly.empty() || weekly.back().first.group != (*it).group))
+					daily.push_back({ *it, 0 });
 			}
 		}
 		string GetName() { return name; }
 		int GetLevel() { return level; }
 		void SetName(const string& name) { this->name = name; }
 		void SetLevel() { this->level = level; }
+		friend class EXPEDITION;
 	};
-	static void InitTodoList() {
-		if (weaklyList.size() && dailyList.size()) return;
-
-		FILE* fp = fopen((dataRoot + "weakly.csv").c_str(), "r");
-
-		//주간 숙제(골드 수급)
-		while (fgets(tmpChar, 1010, fp)) {
-			string cur = tmpChar;
-			if (cur.back() == '\n') cur.pop_back();
-			auto strList = split(cur, ',');
-			//이름, 최소, 최대, 골드, 그룹
-			weaklyList.push_back({ strList[0], str2int(strList[1]), str2int(strList[1]), str2int(strList[2]), str2int(strList[3]) });
-		}
-		fclose(fp);
-
-		fp = fopen((dataRoot + "daily.csv").c_str(), "r");
-		//일간 숙제(가디언 토벌)
-		while (fgets(tmpChar, 1010, fp)) {
-			string cur = tmpChar;
-			if (cur.back() == '\n') cur.pop_back();
-			auto strList = split(cur, ',');
-			dailyList.push_back({ strList[0], str2int(strList[1]), -1, 0, 0 });
-		}
-		fclose(fp);
-	}
 	string id;
 	vector<CHARACTER> charList;
 public:
 	EXPEDITION() :id("") { }
 	EXPEDITION(const string& id) : id(id) {}
-	string GetDailyInfo() {
-		string res = "```\n";
+	void AddCharacter(const string &name, const int lvl) {
+		charList.push_back(CHARACTER(name, lvl));
 	}
-};
-
-class MyClientClass : public SleepyDiscord::DiscordClient {
-	vector<string> LoadFileList(const string root) {
-		vector<string> res;
-		for (const auto& entry : directory_iterator(root)) {
-			auto cur = entry.path().native();
-			string path(cur.begin(), cur.end());
-			if (is_directory(entry.path())) {
-				auto tmp = LoadFileList(path);
-				for (auto i : tmp)
-					res.push_back(i);
+	string GetCharacterWeeklyInfo(const string& name) {
+		string res = u8"";
+		for (auto it : charList) {
+			if (it.name == name) {
+				for (auto w : it.weekly) {
+					res += u8"(";
+					res += (w.second ? u8"O" : u8"X");
+					res += u8") " + w.first.name + u8"\n";
+				}
 			}
-			else
-				res.push_back(path);
 		}
 		return res;
 	}
-	void InitExpedition() {
-
+	string GetCharacterDailyInfo(const string& name) {
+		string res = u8"";
+		for (auto it : charList) {
+			if (it.name == name) {
+				for (auto w : it.daily) {
+					res += u8"(";
+					res += (w.second ? u8"O" : u8"X");
+					res += u8") " + w.first.name + u8"\n";
+				}
+			}
+		}
+		return res;
 	}
+};
+
+vector<EXPEDITION> expdList;
+void InitExpdList() {
+
+}
+class MyClientClass : public SleepyDiscord::DiscordClient {
 public:
 	using SleepyDiscord::DiscordClient::DiscordClient;
 	void MessageSend(SleepyDiscord::Message & message, string str) {
@@ -135,10 +129,10 @@ public:
 				deleteMessage(msg.channelID, msg.ID);
 				return;
 			}
+
 			auto content = msg.content.substr(1);
 
 			auto res = split(content, u8' ');
-
 			if (res[0] == u8"하위")
 				sendMessage(msg.channelID, u8"헬로 " + msg.author.username + u8" 마더뻐-커 ");
 			else if (res[0] == u8"강화") {
@@ -237,6 +231,17 @@ public:
 				auto rep = ANSIToUTF8(GetMariShopInfo(str2ll(res[1])).c_str());
 				sendMessage(msg.channelID, rep);
 			}
+			else if (res[0] == u8"test") {
+				string rep = u8"```\n현재 서버에 등록되어 있는 주간/일간 숙제 리스트입니다.\n\n";
+				for (auto it : weeklyList)
+					rep += it.name + u8"\n";
+
+				for (auto it : dailyList)
+					rep += it.name + u8"\n";
+
+				rep += u8"```";
+				sendMessage(msg.channelID, rep);
+			}
 		}
 	}
 };
@@ -248,7 +253,7 @@ int main() {
 	//Test(); return 0;
 	setlocale(LC_ALL, "ko_KR.utf8");
 	srand(time(0)); 
-
+	InitTodoList();
 	FILE* fp = fopen("token.txt", "r");
 	char token[123]; fscanf(fp, "%s", token);
 	fclose(fp);
@@ -582,4 +587,44 @@ string GetMariShopInfo(ll crystal) {
 			f.close();
 			system("del *.html");
 			return res;
+}
+void InitTodoList() {
+	if (weeklyList.size() && dailyList.size()) return;
+
+	FILE* fp = fopen((dataRoot + "weekly.csv").c_str(), "r");
+
+	//주간 숙제(골드 수급)
+	while (fgets(tmpChar, 1010, fp)) {
+		string cur = tmpChar;
+		if (cur.back() == '\n') cur.pop_back();
+		auto strList = split(cur, ',');
+		//이름, 최소, 최대, 골드, 그룹
+		weeklyList.push_back({ ANSIToUTF8(strList[0].c_str()), str2int(strList[1]), str2int(strList[1]), str2int(strList[2]), str2int(strList[3]) });
+	}
+	fclose(fp);
+
+	fp = fopen((dataRoot + "daily.csv").c_str(), "r");
+	//일간 숙제(가디언 토벌)
+	while (fgets(tmpChar, 1010, fp)) {
+		string cur = tmpChar;
+		if (cur.back() == '\n') cur.pop_back();
+		auto strList = split(cur, ',');
+		dailyList.push_back({ ANSIToUTF8(strList[0].c_str()), str2int(strList[1]), -1, 0, str2int(strList[2]) });
+	}
+	fclose(fp);
+}
+vector<string> LoadFileList(const string root) {
+	vector<string> res;
+	for (const auto& entry : directory_iterator(root)) {
+		auto cur = entry.path().native();
+		string path(cur.begin(), cur.end());
+		if (is_directory(entry.path())) {
+			auto tmp = LoadFileList(path);
+			for (auto i : tmp)
+				res.push_back(i);
+		}
+		else
+			res.push_back(path);
+	}
+	return res;
 }
