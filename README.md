@@ -1,4 +1,15 @@
 # Discord bot for LostArk
+
+# Command List(start with '!')
+- 하위
+- 강화 [확률]
+- 주사위
+- 원정대등록 [캐릭터 명]
+  - 원정대 등록 시, 원정대에 포함되어 있는 캐릭터 중, 1325 레벨 이상의 모든 캐릭터 등록
+- 캐릭터추가 [캐릭터 명]
+- 마리 [크리스탈 가격]
+
+
 # Todo
 - Scheduling for commands
 - Refactoring
@@ -13,5 +24,6 @@
   - 강화 [확률]
   - 주사위
   - 원정대등록 [캐릭터 명]
-    - 원정대 등록 시, 원정대에 포함되어 있는 캐릭터 중, 1325 레벨 이상의 모든 캐릭터 등록
   - 캐릭터추가 [캐릭터 명]
+  - 마리 [크리스탈 가격]
+- Expedition, character class
