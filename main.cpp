@@ -111,13 +111,16 @@ void InitExpdList() {
 
 }
 class MyClientClass : public SleepyDiscord::DiscordClient {
+private:
+	string learningAuth = "";
+	string rep = u8""; 
+	const string startString = u8"!";
 public:
 	using SleepyDiscord::DiscordClient::DiscordClient;
 	void MessageSend(SleepyDiscord::Message & message, string str) {
 		sendMessage(message.channelID, str);
 	}
 	bool learningFlag = 0;
-	string learningAuth = "";
 	void onMessage(SleepyDiscord::Message msg) override {
 		if (msg.author.bot) return;
 
@@ -126,7 +129,7 @@ public:
 		//createDirectMessageChannel(msg.author.ID);
 		//sendMessage(pmChannel.ID, "Test");
 
-		if (msg.startsWith("!")) {
+		if (msg.startsWith(startString)) {
 			if (msg.length() == 1) return;
 			if (msg.channelID.string() != u8"884882368056414289") {
 				sendMessage(msg.channelID, u8"명령어 채널을 이용해주세요.");
@@ -174,7 +177,7 @@ public:
 
 						fp = fopen((rt + "/cList.txt").c_str(), "w");
 
-						string rep = u8"```등록되지 않은 원정대입니다. 원정대 등록을 시작합니다.\n원정대에 포함되어 있는 캐릭터 중, 1325 이상의 캐릭터만 등록됩니다.\n원정대 정보는 디스코드 계정의 고유 ID를 통해 저장됩니다.```";
+						rep = u8"```등록되지 않은 원정대입니다. 원정대 등록을 시작합니다.\n원정대에 포함되어 있는 캐릭터 중, 1325 이상의 캐릭터만 등록됩니다.\n원정대 정보는 디스코드 계정의 고유 ID를 통해 저장됩니다.```";
 						sendMessage(msg.channelID, rep);
 						
 						auto expd = GetExpdInfo(res[1], msg.author.ID.string());
@@ -240,7 +243,7 @@ public:
 				sendMessage(msg.channelID, rep);
 			}
 			else if (res[0] == u8"test") {
-				string rep = u8"```\n현재 서버에 등록되어 있는 주간/일간 숙제 리스트입니다.\n\n";
+				rep = u8"```\n현재 서버에 등록되어 있는 주간/일간 숙제 리스트입니다.\n\n";
 				for (auto it : weeklyList)
 					rep += it.name + u8"\n";
 
@@ -259,7 +262,7 @@ public:
 					sendMessage(msg.channelID, u8"등록되지 않은 원정대입니다.(!원정대등록)");
 					return;
 				}
-				string rep = u8"```\n";
+				rep = u8"```\n";
 				if (res[2] == u8"일일") {
 					rep += res[1] + u8"캐릭터의 일일 컨텐츠 현황입니다.\n";
 					rep += expdList[expdComp[msg.author.ID.string()]].GetCharacterDailyInfo(res[1]);
@@ -279,6 +282,24 @@ public:
 				ud randomNumber(1, 10000);
 				if (randomNumber(gen) <= 1000) sendMessage(msg.channelID, u8"아; 이게 뜨네;;");
 				else sendMessage(msg.channelID, u8"77777777777777ㅓㅓㅓㅓㅓㅓㅓㅓㅓㅓ억");
+			}
+			else if (res[0] == u8"일정등록") {
+				if (res.size() != 5) {
+					rep = u8"```\n";
+					rep += startString + u8"일정등록 [이름] [난이도] [요일] [시간]\n";
+					rep += u8"ex) !일정등록 발탄 노말 토 21:15\n";
+					rep += u8"    !일정등록 아브렐슈드 노말(1-4) 일 21:00\n";
+					rep += u8"    !일정등록 아브렐슈드 1-6 미정 미정\n";
+					rep += u8"[이름], [난이도], [요일], [시간]에는 공백을 넣지 말아주세요.\n일정은 자동으로 분류되어 번호가 부여됩니다.```";
+				}
+				else {
+					//명령어 사용 권한
+					if (msg.author.ID.string() != u8"343740791065280512") 
+						rep = u8"명령어 사용 권한이 없습니다";
+					else 
+						rep = u8"일정이 등록되었습니다.";
+				}
+				sendMessage(msg.channelID, rep);
 			}
 		}
 	}
