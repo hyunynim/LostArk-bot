@@ -25,6 +25,7 @@
 - Edit weekly, daily data form 
   - Use index for DB
 - Scheduling for commands
+- FILE I/O for schedule
 - Refactoring
   - Function that get information from web
   - Commands(onMessage)
