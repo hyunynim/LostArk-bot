@@ -12,6 +12,11 @@
 - 마리 [크리스탈 가격]
 - 항아리
   - 성공 확률 10%
+- 일정등록 [이름] [난이도] [요일] [시간]
+  - [이름], [난이도], [요일], [시간]에 공백 포함될 수 없음
+  - 모든 일정 등록 후, 일정확정 명령어를 사용하면 투표 시작
+- 일정확정
+- 일정확인
 
 # Todo
 - Edit weekly, daily data form 
@@ -22,6 +27,12 @@
   - Commands(onMessage)
   - Util function(for string)
 - Expedition scheduler
+
+# 2021-09-14
+ - Add commands
+   - 일정등록, 일정확인, 일정확정
+ - Edit checking start string 
+
 # 2021-09-09
 - Add commands
   - 원정대, 항아리
