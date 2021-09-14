@@ -107,6 +107,7 @@ public:
 
 vector<EXPEDITION> expdList(1);
 map<string, int> expdComp;
+set<pair<string, vector<string>>> scheduleList;
 void InitExpdList() {
 
 }
@@ -115,6 +116,7 @@ private:
 	string learningAuth = "";
 	string rep = u8""; 
 	const string startString = u8"!";
+	bool scheduleOpened = 0;
 public:
 	using SleepyDiscord::DiscordClient::DiscordClient;
 	void MessageSend(SleepyDiscord::Message & message, string str) {
@@ -142,7 +144,7 @@ public:
 
 			auto res = split(content, u8' ');
 			if (res[0] == u8"하위") sendMessage(msg.channelID, u8"헬로 " + msg.author.username + u8" 마더뻐-커 ");
-			else if (res[0] == u8"강화") {
+			else if(res[0] == u8"강화") {
 				auto num = str2ll(res[1]);
 				if (num == -1)
 					sendMessage(msg.channelID, u8"!강화 확률(1% = 10, 0.1% = 1)");
@@ -156,15 +158,15 @@ public:
 						sendMessage(msg.channelID, u8"77777777777777ㅓㅓㅓㅓㅓㅓㅓㅓㅓㅓ억");
 				}
 			}
-			else if (res[0] == u8"툴쓰칼잽이") sendMessage(msg.channelID, u8"김연수");
-			else if (res[0] == u8"주사위") {
+			else if(res[0] == u8"툴쓰칼잽이") sendMessage(msg.channelID, u8"김연수");
+			else if(res[0] == u8"주사위") {
 				if (res.size() == 1) {
 					ud randomNumber(1, 100);
 					auto res = ll2str(randomNumber(gen));
 					sendMessage(msg.channelID, u8"주사위 결과는 " + res + u8"(1-100)");
 				}
 			}
-			else if (res[0] == u8"원정대등록") {
+			else if(res[0] == u8"원정대등록") {
 				if (res.size() != 2) {
 					sendMessage(msg.channelID, u8"!원정대등록 [원정대에 포함된 캐릭터 중 하나의 캐릭터 이름]");
 				}
@@ -203,7 +205,7 @@ public:
 					}
 				}
 			}
-			else if (res[0] == u8"캐릭터추가") {
+			else if(res[0] == u8"캐릭터추가") {
 				if (res.size() != 2) {
 					sendMessage(msg.channelID, u8"!캐릭터추가 [추가할 캐릭터 이름]");
 				}
@@ -234,7 +236,7 @@ public:
 					if (fp != NULL) fclose(fp);
 				}
 			}
-			else if (res[0] == u8"마리") {
+			else if(res[0] == u8"마리") {
 				if (res.size() != 2) {
 					sendMessage(msg.channelID, u8"!마리 [크리스탈 가격]");
 					return;
@@ -242,7 +244,7 @@ public:
 				auto rep = ANSIToUTF8(GetMariShopInfo(str2ll(res[1])).c_str());
 				sendMessage(msg.channelID, rep);
 			}
-			else if (res[0] == u8"test") {
+			else if(res[0] == u8"test") {
 				rep = u8"```\n현재 서버에 등록되어 있는 주간/일간 숙제 리스트입니다.\n\n";
 				for (auto it : weeklyList)
 					rep += it.name + u8"\n";
@@ -278,26 +280,55 @@ public:
 				rep += u8"```";
 				sendMessage(msg.channelID, rep);
 			}
-			else if (res[0] == u8"항아리") {
+			else if(res[0] == u8"항아리") {
 				ud randomNumber(1, 10000);
 				if (randomNumber(gen) <= 1000) sendMessage(msg.channelID, u8"아; 이게 뜨네;;");
 				else sendMessage(msg.channelID, u8"77777777777777ㅓㅓㅓㅓㅓㅓㅓㅓㅓㅓ억");
 			}
-			else if (res[0] == u8"일정등록") {
+			else if(res[0] == u8"일정등록") {
 				if (res.size() != 5) {
 					rep = u8"```\n";
 					rep += startString + u8"일정등록 [이름] [난이도] [요일] [시간]\n";
 					rep += u8"ex) !일정등록 발탄 노말 토 21:15\n";
 					rep += u8"    !일정등록 아브렐슈드 노말(1-4) 일 21:00\n";
 					rep += u8"    !일정등록 아브렐슈드 1-6 미정 미정\n";
-					rep += u8"[이름], [난이도], [요일], [시간]에는 공백을 넣지 말아주세요.\n일정은 자동으로 분류되어 번호가 부여됩니다.```";
+					rep += u8"[이름], [난이도], [요일], [시간]에는 공백을 넣지 말아주세요.\n일정은 자동으로 분류되어 번호가 부여됩니다.\n";
+					rep += u8"일정이 확정된 경우 " + startString + u8"일정확정 명령어를 사용해주세요. 일정이 확정되면 일정을 등록할 수 없습니다.";
+					rep += u8"```";
 				}
 				else {
 					//명령어 사용 권한
+					//임원 ID 부여, ID 노출 안되도록 권한 확인
 					if (msg.author.ID.string() != u8"343740791065280512") 
 						rep = u8"명령어 사용 권한이 없습니다";
-					else 
+					else {
 						rep = u8"일정이 등록되었습니다.";
+						string tmp = u8"";
+						for (int i = 1; i < res.size(); ++i)
+							tmp += res[i] + u8" ";
+						scheduleList.insert({ tmp, vector<string>() });
+					}
+				}
+				sendMessage(msg.channelID, rep);
+			}
+			else if(res[0] == u8"일정확인") {
+				rep += u8"```\n현재까지 등록된 일정 목록입니다.\n";
+				for (auto i : scheduleList)
+					rep += i.first + u8"\n";
+				if (!scheduleOpened) {
+					rep += u8"현재 일정이 확정되지 않았으므로 투표를 진행할 수 없습니다.\n";
+				}
+				rep += u8"```";
+				sendMessage(msg.channelID, rep);
+			}
+			else if(res[0] == u8"일정확정") {
+				if (scheduleOpened) {
+					rep = u8"이미 투표가 진행중입니다.";
+				}
+				else {
+					scheduleOpened = 1;
+					//Need to add mention everyone
+					rep = u8"일정이 확정되었습니다. 지금부터 투표에 참여하실 수 있습니다.";
 				}
 				sendMessage(msg.channelID, rep);
 			}
