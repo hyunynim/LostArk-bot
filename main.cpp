@@ -312,11 +312,18 @@ public:
 				sendMessage(msg.channelID, rep);
 			}
 			else if(res[0] == u8"일정확인") {
-				rep += u8"```\n현재까지 등록된 일정 목록입니다.\n";
-				for (auto i : scheduleList)
-					rep += i.first + u8"\n";
+				rep = u8"```\n";
+				rep += u8"현재까지 등록된 일정 목록입니다.\n";
 				if (!scheduleOpened) {
+					for (auto i : scheduleList)
+						rep += i.first + u8"\n";
 					rep += u8"현재 일정이 확정되지 않았으므로 투표를 진행할 수 없습니다.\n";
+				}
+				else {
+					int num = 1;
+					for (auto i : scheduleList)
+						rep += ll2str(num++) + u8" " + i.first + u8"\n";
+					rep += startString + u8"일정투표 [번호]를 통해 투표할 수 있습니다.\n";
 				}
 				rep += u8"```";
 				sendMessage(msg.channelID, rep);
