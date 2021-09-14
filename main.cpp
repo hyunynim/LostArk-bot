@@ -107,7 +107,8 @@ public:
 
 vector<EXPEDITION> expdList(1);
 map<string, int> expdComp;
-set<pair<string, vector<string>>> scheduleList;
+set<string> scheduleList;
+vector<pair<string, vector<string>>> scheduleListVector;
 void InitExpdList() {
 
 }
@@ -306,7 +307,7 @@ public:
 						string tmp = u8"";
 						for (int i = 1; i < res.size(); ++i)
 							tmp += res[i] + u8" ";
-						scheduleList.insert({ tmp, vector<string>() });
+						scheduleList.insert(tmp);
 					}
 				}
 				sendMessage(msg.channelID, rep);
@@ -316,26 +317,54 @@ public:
 				rep += u8"현재까지 등록된 일정 목록입니다.\n";
 				if (!scheduleOpened) {
 					for (auto i : scheduleList)
-						rep += i.first + u8"\n";
+						rep += i + u8"\n";
 					rep += u8"현재 일정이 확정되지 않았으므로 투표를 진행할 수 없습니다.\n";
 				}
 				else {
 					int num = 1;
-					for (auto i : scheduleList)
-						rep += ll2str(num++) + u8" " + i.first + u8"\n";
+					for (auto i : scheduleListVector)
+						rep += ll2str(num++) + u8" " + i.first + u8"(" + (i.second.empty() ? u8"0" : ll2str(i.second.size())) + u8"명)\n";
 					rep += startString + u8"일정투표 [번호]를 통해 투표할 수 있습니다.\n";
 				}
 				rep += u8"```";
 				sendMessage(msg.channelID, rep);
 			}
 			else if(res[0] == u8"일정확정") {
-				if (scheduleOpened) {
+
+				if (msg.author.ID.string() != u8"343740791065280512") rep = u8"명령어 사용 권한이 없습니다";
+				else if (scheduleOpened) {
 					rep = u8"이미 투표가 진행중입니다.";
 				}
 				else {
 					scheduleOpened = 1;
 					//Need to add mention everyone
 					rep = u8"일정이 확정되었습니다. 지금부터 투표에 참여하실 수 있습니다.";
+					scheduleListVector.clear();
+					for (auto it : scheduleList)
+						scheduleListVector.push_back({ it, vector<string>() });
+				}
+				sendMessage(msg.channelID, rep);
+			}
+			else if (res[0] == u8"일정투표") {
+				if (res.size() != 3) {
+					rep = startString + u8"일정투표 [캐릭터명] [번호]\n";
+					rep += startString + u8"일정확인 명령어로 일정을 확인해주시기 바랍니다.\n";
+					if(!scheduleOpened)
+						rep += u8"현재 일정이 확정되지 않았으므로 투표를 진행할 수 없습니다.\n";
+					else
+						rep += u8"현재 투표가 진행중입니다.\n";
+				}
+				else {
+					int idx = str2ll(res[2]) - 1;
+					if (idx < 0 || idx >= scheduleList.size()) 
+						rep = "등록된 일정의 번호를 확인해주세요.";
+					else if (find(scheduleListVector[idx].second.begin(), scheduleListVector[idx].second.begin(), res[1]) != scheduleListVector[idx].second.end()) {
+						rep = "이미 등록된 캐릭터입니다.";
+					}
+					else {
+						rep = res[1] + u8"(" + ll2str(GetLevelInfo(res[1], msg.author.ID.string())) + u8") 캐릭터가 " + scheduleListVector[idx].first + u8"에 등록되었습니다.";
+						scheduleListVector[idx].second.push_back(res[1]);
+					}
 				}
 				sendMessage(msg.channelID, rep);
 			}
